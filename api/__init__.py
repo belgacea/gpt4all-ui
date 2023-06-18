@@ -24,6 +24,7 @@ import requests
 from tqdm import tqdm 
 import traceback
 import sys
+from lollms.console import MainMenu
 
 __author__ = "parisneo"
 __github__ = "https://github.com/ParisNeo/lollms-webui"
@@ -110,7 +111,7 @@ class ModelProcess:
 
     def reset_config_result(self):
         self._set_config_result = {
-            'status': 'succeeded',
+            'status': True,
             'binding_status':True,
             'model_status':True,
             'personalities_status':True,
@@ -135,7 +136,7 @@ class ModelProcess:
 
         return string
         
-    def load_binding(self, binding_name:str, install=False):
+    def load_binding(self, binding_name:str, install=False, force_install=False):
         if install:
             print(f"Loading binding {binding_name} install ON")
         else:
@@ -150,7 +151,7 @@ class ModelProcess:
             # first find out if there is a requirements.txt file
             install_file_name="install.py"
             install_script_path = binding_path / install_file_name        
-            if install_script_path.exists():
+            if install_script_path.exists() or force_install:
                 module_name = install_file_name[:-3]  # Remove the ".py" extension
                 module_spec = importlib.util.spec_from_file_location(module_name, str(install_script_path))
                 module = importlib.util.module_from_spec(module_spec)
@@ -252,10 +253,12 @@ class ModelProcess:
     def rebuild_personalities(self):
         mounted_personalities=[]
         ASCIIColors.success(f" ******************* Building mounted Personalities from main Process *************************")
-        for personality in self.config['personalities']:
+        for i,personality in enumerate(self.config['personalities']):
             try:
-                print(f" {personality}")
                 personality_path = self.lollms_paths.personalities_zoo_path/f"{personality}"
+                if i==self.config["active_personality_id"]:
+                    ASCIIColors.red("*", end="")
+                print(f" {personality}")
                 print(f"Loading from {personality_path}")
                 personality = AIPersonality(self.lollms_paths, personality_path, run_scripts=False)
                 mounted_personalities.append(personality)
@@ -264,7 +267,7 @@ class ModelProcess:
                 if self.config["debug"]:
                     print(ex)
                 personality = AIPersonality(self.lollms_paths)
-            
+        print(f'selected : {self.config["active_personality_id"]}')
         ASCIIColors.success(f" ************ Personalities mounted (Main process) ***************************")
             
         return mounted_personalities
@@ -274,8 +277,10 @@ class ModelProcess:
         failed_personalities=[]
         self.reset_config_result()
         ASCIIColors.success(f" ******************* Building mounted Personalities from generation Process *************************")
-        for personality in self.config['personalities']:
+        for i,personality in enumerate(self.config['personalities']):
             try:
+                if i==self.config["active_personality_id"]:
+                    ASCIIColors.red("*", end="")
                 print(f" {personality}")
                 personality_path = self.lollms_paths.personalities_zoo_path/f"{personality}"
                 personality = AIPersonality(self.lollms_paths, personality_path, run_scripts=True, model=self.model)
@@ -286,7 +291,8 @@ class ModelProcess:
                 personality = AIPersonality(self.lollms_paths, model=self.model)
                 failed_personalities.append(personality_path)
                 self._set_config_result['errors'].append(f"couldn't build personalities:{ex}")
-            
+                
+        print(f'selected : {self.config["active_personality_id"]}')            
         ASCIIColors.success(f" ************ Personalities mounted (Generation process) ***************************")
         if len(failed_personalities)==len(self.config['personalities']):
             self._set_config_result['status'] ='failed'
@@ -294,13 +300,14 @@ class ModelProcess:
         elif len(failed_personalities)>0:
             self._set_config_result['status'] ='semi_failed'
             self._set_config_result['personalities_status'] ='semi_failed'
-            
+
         if self.config['active_personality_id']<len(self.mounted_personalities):
             self.personality = self.mounted_personalities[self.config['active_personality_id']]
             ASCIIColors.success("Personality set successfully")
         else:
+
             ASCIIColors.error("Failed to set personality. Please select a valid one")
-       
+
     def _run(self):     
         self._rebuild_model()
         self._rebuild_personalities()
@@ -324,7 +331,8 @@ class ModelProcess:
             print("No model loaded. Waiting for new configuration instructions")
                     
         self.ready = True
-        ASCIIColors.print(ASCIIColors.color_bright_blue,f"Listening on :http://{self.config['host']}:{self.config['port']}")
+        ASCIIColors.blue(f"Your personal data is stored here :{self.lollms_paths.personal_path}")
+        ASCIIColors.blue(f"Listening on :http://{self.config['host']}:{self.config['port']}")
         while True:
             try:
                 if not self.generate_queue.empty():
@@ -455,7 +463,8 @@ class ModelProcess:
     def _set_config(self, config):
         bk_cfg = self.config
         self.config = config
-        print("Changing configuration")
+        ASCIIColors.info("Upgrading configuration...",end="")
+        
         # verify that the binding is the same
         if self.config["binding_name"]!=bk_cfg["binding_name"] or self.config["model_name"]!=bk_cfg["model_name"]:
             self._rebuild_model()
@@ -469,14 +478,22 @@ class ModelProcess:
 class LoLLMsAPPI():
     def __init__(self, config:LOLLMSConfig, socketio, config_file_path:str, lollms_paths: LollmsPaths) -> None:
         self.lollms_paths = lollms_paths
+        self.config = config
+        self.menu = MainMenu(self)
+        
+        # Check model
+        if config.model_name is None:
+            self.menu.select_model()       
         
         self.socketio = socketio
         #Create and launch the process
         self.process = ModelProcess(self.lollms_paths, config)
-        self.config = config
         self.binding = self.process.rebuild_binding(self.config)
         self.mounted_personalities = self.process.rebuild_personalities()
-        self.personality = self.mounted_personalities[self.config["active_personality_id"]]
+        if self.config["active_personality_id"]<len(self.mounted_personalities):
+            self.personality = self.mounted_personalities[self.config["active_personality_id"]]
+        else:
+            self.personality = None
         if config["debug"]:
             print(print(f"{self.personality}"))
         self.config_file_path = config_file_path
@@ -497,7 +514,10 @@ class LoLLMsAPPI():
             self.db = DiscussionsDB(self.lollms_paths.personal_path/"databases"/self.db_path)
 
         # If the database is empty, populate it with tables
-        self.db.populate()
+        ASCIIColors.info("Checking discussions database... ",end="")
+        self.db.create_tables()
+        self.db.add_missing_columns()
+        ASCIIColors.success("ok")
 
         # This is used to keep track of messages 
         self.full_message_list = []
@@ -528,7 +548,7 @@ class LoLLMsAPPI():
 
                 if installation_path.exists():
                     print("Error: Model already exists")
-                    socketio.emit('install_progress',{'status': 'failed', 'error': 'model already exists'}, room=room_id)
+                    socketio.emit('install_progress',{'status': False, 'error': 'model already exists'}, room=room_id)
                 
                 socketio.emit('install_progress',{'status': 'progress', 'progress': progress}, room=room_id)
                 
@@ -539,7 +559,7 @@ class LoLLMsAPPI():
                     self.binding.download_model(model_path, installation_path, callback)
                 else:
                     self.download_file(model_path, installation_path, callback)
-                socketio.emit('install_progress',{'status': 'succeeded', 'error': ''}, room=room_id)
+                socketio.emit('install_progress',{'status': True, 'error': ''}, room=room_id)
             tpe = threading.Thread(target=install_model_, args=())
             tpe.start()
             
@@ -552,10 +572,10 @@ class LoLLMsAPPI():
             installation_path = installation_dir / filename
 
             if not installation_path.exists():
-                socketio.emit('install_progress',{'status': 'failed', 'error': 'The model does not exist'}, room=request.sid)
+                socketio.emit('install_progress',{'status': False, 'error': 'The model does not exist'}, room=request.sid)
 
             installation_path.unlink()
-            socketio.emit('install_progress',{'status': 'succeeded', 'error': ''}, room=request.sid)
+            socketio.emit('install_progress',{'status': True, 'error': ''}, room=request.sid)
             
 
         
@@ -571,11 +591,13 @@ class LoLLMsAPPI():
 
                 message = data["prompt"]
                 message_id = self.current_discussion.add_message(
-                    "user", message, parent=self.message_id
+                    "user", 
+                    message, 
+                    parent=self.message_id
                 )
 
                 self.current_user_message_id = message_id
-                print("Starting message generation")
+                ASCIIColors.green("Starting message generation by"+self.personality.name)
                 tpe = threading.Thread(target=self.start_message_generation, args=(message, message_id))
                 tpe.start()
             else:
@@ -589,6 +611,12 @@ class LoLLMsAPPI():
                             "message":"",
                             "user_message_id": self.current_user_message_id,
                             "ai_message_id": self.current_ai_message_id,
+
+                            'binding': self.current_discussion.current_message_binding,
+                            'model': self.current_discussion.current_message_model,
+                            'personality': self.current_discussion.current_message_personality,
+                            'created_at': self.current_discussion.current_message_created_at,
+                            'finished_generating_at': self.current_discussion.current_message_finished_generating_at,
                         }, room=self.current_room_id
                 )
 
@@ -624,6 +652,41 @@ class LoLLMsAPPI():
         self._current_ai_message_id=id
         self._message_id = id
 
+
+    def load_model(self):
+        try:
+            print("update_settings : New model selected")
+            if hasattr(self,"process"):
+                result = self.process.set_config(self.config)
+                if result["status"]:
+                    ASCIIColors.success("OK")
+                else:
+                    ASCIIColors.error("NOK")
+        except Exception as ex:
+            ASCIIColors.error(f"Couldn't load model.Process returned exception : {ex}")
+            ASCIIColors.error(f"Binding returned this exception : {ex}")
+            ASCIIColors.error(f"{self.config.get_model_path_infos()}")
+            print("Please select a valid model or install a new one from a url")
+            self.menu.select_model()
+
+
+    def load_personality(self):
+        try:
+            print("update_settings : New personality selected")
+            if hasattr(self,"process"):
+                result = self.process.set_config(self.config)
+                if result["status"]:
+                    ASCIIColors.success("OK")
+                else:
+                    ASCIIColors.error("NOK")
+        except Exception as ex:
+            ASCIIColors.error(f"Couldn't load personality. Please verify your configuration file at {self.configuration_path} or use the next menu to select a valid personality")
+            ASCIIColors.error(f"Binding returned this exception : {ex}")
+            ASCIIColors.error(f"{self.config.get_personality_path_infos()}")
+            print("Please select a valid model or install a new one from a url")
+            self.menu.select_model()
+        self.cond_tk = self.personality.model.tokenize(self.personality.personality_conditioning)
+        self.n_cond_tk = len(self.cond_tk)    
 
     def download_file(self, url, installation_path, callback=None):
         """
@@ -671,7 +734,10 @@ class LoLLMsAPPI():
                 self.personality.name, self.personality.welcome_message, 
                 DiscussionsDB.MSG_TYPE_NORMAL,
                 0,
-                -1
+                -1,
+                binding= self.config["binding_name"],
+                model = self.config["model_name"], 
+                personality=self.config["personalities"][self.config["active_personality_id"]]
             )
         
             self.current_ai_message_id = message_id
@@ -778,7 +844,12 @@ class LoLLMsAPPI():
         if self.current_discussion:
             # First we need to send the new message ID to the client
             self.current_ai_message_id = self.current_discussion.add_message(
-                self.personality.name, "", parent = self.current_user_message_id
+                self.personality.name, 
+                "", 
+                parent = self.current_user_message_id,
+                binding = self.config["binding_name"],
+                model = self.config["model_name"], 
+                personality = self.config["personalities"][self.config["active_personality_id"]]
             )  # first the content is empty, but we'll fill it at the end
             self.socketio.emit('infos',
                     {
@@ -789,6 +860,12 @@ class LoLLMsAPPI():
                         "message":message,#markdown.markdown(message),
                         "user_message_id": self.current_user_message_id,
                         "ai_message_id": self.current_ai_message_id,
+
+                        'binding': self.current_discussion.current_message_binding,
+                        'model': self.current_discussion.current_message_model,
+                        'personality': self.current_discussion.current_message_personality,
+                        'created_at': self.current_discussion.current_message_created_at,
+                        'finished_generating_at': self.current_discussion.current_message_finished_generating_at,                        
                     }, room=self.current_room_id
             )
 
@@ -810,17 +887,33 @@ class LoLLMsAPPI():
             print("## Done Generation ##")
             print()
 
+            self.current_discussion.update_message(self.current_ai_message_id, self.bot_says)
+            self.full_message_list.append(self.bot_says)
+            self.cancel_gen = False
+
             # Send final message
             self.socketio.emit('final', {
                                             'data': self.bot_says, 
                                             'ai_message_id':self.current_ai_message_id, 
-                                            'parent':self.current_user_message_id, 'discussion_id':self.current_discussion.discussion_id
+                                            'parent':self.current_user_message_id, 'discussion_id':self.current_discussion.discussion_id,
+                                            "status":'model_not_ready',
+                                            "type": "input_message_infos",
+                                            'logo': "",
+                                            "bot": self.personality.name,
+                                            "user": self.personality.user_name,
+                                            "message":self.bot_says,
+                                            "user_message_id": self.current_user_message_id,
+                                            "ai_message_id": self.current_ai_message_id,
+
+                                            'binding': self.current_discussion.current_message_binding,
+                                            'model': self.current_discussion.current_message_model,
+                                            'personality': self.current_discussion.current_message_personality,
+                                            'created_at': self.current_discussion.current_message_created_at,
+                                            'finished_generating_at': self.current_discussion.current_message_finished_generating_at,
+
                                         }, room=self.current_room_id
                                 )
 
-            self.current_discussion.update_message(self.current_ai_message_id, self.bot_says)
-            self.full_message_list.append(self.bot_says)
-            self.cancel_gen = False
             print()
             print("## Done ##")
             print()

@@ -72,7 +72,6 @@ class LoLLMsWebUI(LoLLMsAPPI):
 
         self.app = _app
         self.cancel_gen = False
-        
 
         app.template_folder = "web/dist"
 
@@ -85,6 +84,7 @@ class LoLLMsWebUI(LoLLMsAPPI):
         # =========================================================================================
 
 
+        self.add_endpoint("/reinstall_binding", "reinstall_binding", self.reinstall_binding, methods=["POST"])
 
 
         self.add_endpoint("/switch_personal_path", "switch_personal_path", self.switch_personal_path, methods=["POST"])
@@ -440,7 +440,11 @@ class LoLLMsWebUI(LoLLMsAPPI):
                 else:
                     self.config["active_personality_id"] = 0
                     self.config["personalities"][self.config["active_personality_id"]] = f"{self.personality_language}/{self.personality_category}/{self.personality_name}"
-                personality_fn = self.lollms_paths.personalities_zoo_path/self.config["personalities"][self.config["active_personality_id"]]
+                
+                if self.personality_category!="Custom":
+                    personality_fn = self.lollms_paths.personalities_zoo_path/self.config["personalities"][self.config["active_personality_id"]]
+                else:
+                    personality_fn = self.lollms_paths.personal_personalities_path/self.config["personalities"][self.config["active_personality_id"]].split("/")[-1]
                 self.personality.load_personality(personality_fn)
             else:
                 self.config["personalities"].append(f"{self.personality_language}/{self.personality_category}/{self.personality_name}")
@@ -477,16 +481,22 @@ class LoLLMsWebUI(LoLLMsAPPI):
         if self.config["debug"]:
             print(f"Configuration {data['setting_name']} set to {data['setting_value']}")
             
-        print(f"Configuration {data['setting_name']} updated")
+        ASCIIColors.success(f"Configuration {data['setting_name']} updated")
         # Tell that the setting was changed
         return jsonify({'setting_name': data['setting_name'], "status":True})
 
 
+
     def apply_settings(self):
         result = self.process.set_config(self.config)
-        print("Set config results:")
-        print(result)
+        if result["status"]:
+            ASCIIColors.success("OK")
+        else:
+            ASCIIColors.error("NOK")
+            
         return jsonify(result)
+    
+
     
     def ram_usage(self):
         """
@@ -505,21 +515,28 @@ class LoLLMsWebUI(LoLLMsAPPI):
         current_drive = Path.cwd().anchor
         drive_disk_usage = psutil.disk_usage(current_drive)
         try:
-            models_folder_disk_usage = psutil.disk_usage(self.lollms_paths.personal_models_path/f'{self.config["binding_name"]}')
-            return jsonify({
+            models_folder_disk_usage = psutil.disk_usage(str(self.lollms_paths.personal_models_path/f'{self.config["binding_name"]}'))
+            return jsonify( {
                 "total_space":drive_disk_usage.total,
                 "available_space":drive_disk_usage.free,
+                "usage":drive_disk_usage.used,
+                "percent_usage":drive_disk_usage.percent,
 
-                "percent_usage":drive_disk_usage.percent,
-                "binding_models_usage": models_folder_disk_usage.used
+                "binding_disk_total_space":models_folder_disk_usage.total,
+                "binding_disk_available_space":drive_disk_usage.free,
+                "binding_models_usage": models_folder_disk_usage.used,
+                "binding_models_percent_usage": models_folder_disk_usage.percent,
                 })
-        except:
+        except Exception as ex:
             return jsonify({
                 "total_space":drive_disk_usage.total,
                 "available_space":drive_disk_usage.free,
-                
                 "percent_usage":drive_disk_usage.percent,
-                "models_folder_usage": None
+
+                "binding_disk_total_space": None,
+                "binding_disk_available_space": None,
+                "binding_models_usage": None,
+                "binding_models_percent_usage": None,
                 })
 
     def list_bindings(self):
@@ -593,9 +610,9 @@ class LoLLMsWebUI(LoLLMsAPPI):
         path = Path("personalities")/lang/category/name
         try:
             shutil.rmtree(path)
-            return jsonify({'status':'success'})
+            return jsonify({'status':True})
         except Exception as ex:
-            return jsonify({'status':'failure','error':str(ex)})
+            return jsonify({'status':False,'error':str(ex)})
 
     def add_endpoint(
         self,
@@ -722,9 +739,27 @@ class LoLLMsWebUI(LoLLMsAPPI):
                         "active_personality_id":self.config["active_personality_id"]
                         })         
 
+    def reinstall_binding(self):
+        try:
+            data = request.get_json()
+            # Further processing of the data
+        except Exception as e:
+            print(f"Error occurred while parsing JSON: {e}")
+            return
+        print(f"- Reinstalling binding {data['name']}...",end="")
+        try:
+            self.binding = self.process.load_binding(self.config["binding_name"], install=True, force_install=True)
+            return jsonify({"status": True}) 
+        except Exception as ex:
+            print(f"Couldn't build binding: [{ex}]")
+            return jsonify({"status":False, 'error':str(ex)})
+        
+
+    
+
 
     def mount_personality(self):
-        print("- Mounting personality")
+        print("- Mounting personality ...",end="")
         try:
             data = request.get_json()
             # Further processing of the data
@@ -733,7 +768,7 @@ class LoLLMsWebUI(LoLLMsAPPI):
             return
         language = data['language']
         category = data['category']
-        name = data['name']
+        name = data['folder']
 
         package_path = f"{language}/{category}/{name}"
         package_full_path = self.lollms_paths.personalities_zoo_path/package_path
@@ -743,16 +778,18 @@ class LoLLMsWebUI(LoLLMsAPPI):
             self.mounted_personalities = self.process.rebuild_personalities()
             self.personality = self.mounted_personalities[self.config["active_personality_id"]]
             self.apply_settings()
+            ASCIIColors.success("ok")
             return jsonify({"status": True,
                             "personalities":self.config["personalities"],
                             "active_personality_id":self.config["active_personality_id"]
                             })         
         else:
             pth = str(config_file).replace('\\','/')
+            ASCIIColors.error(f"nok : Personality not found @ {pth}")
             return jsonify({"status": False, "error":f"Personality not found @ {pth}"})         
 
     def unmount_personality(self):
-        print("- Unmounting personality")
+        print("- Unmounting personality ...",end="")
         try:
             data = request.get_json()
             # Further processing of the data
@@ -761,40 +798,48 @@ class LoLLMsWebUI(LoLLMsAPPI):
             return
         language    = data['language']
         category    = data['category']
-        name        = data['name']
+        name        = data['folder']
         try:
             index = self.config["personalities"].index(f"{language}/{category}/{name}")
             self.config["personalities"].remove(f"{language}/{category}/{name}")
             if self.config["active_personality_id"]>=index:
                 self.config["active_personality_id"]=0
             if len(self.config["personalities"])>0:
-                self.personalities = self.process.rebuild_personalities()
+                self.mounted_personalities = self.process.rebuild_personalities()
                 self.personality = self.mounted_personalities[self.config["active_personality_id"]]
             else:
-                self.personalities = []
-                self.personality = None
+                self.personalities = ["english/generic/lollms"]
+                self.mounted_personalities = self.process.rebuild_personalities()
+                self.personality = self.mounted_personalities[self.config["active_personality_id"]]
             self.apply_settings()
+            ASCIIColors.success("ok")
             return jsonify({
                         "status": True,
                         "personalities":self.config["personalities"],
                         "active_personality_id":self.config["active_personality_id"]
                         })         
         except:
+            ASCIIColors.error(f"nok : Personality not found @ {language}/{category}/{name}")
             return jsonify({"status": False, "error":"Couldn't unmount personality"})         
             
     def select_personality(self):
+
         data = request.get_json()
         id = data['id']
+        print(f"- Selecting active personality {id} ...",end="")
         if id<len(self.config["personalities"]):
             self.config["active_personality_id"]=id
             self.personality = self.mounted_personalities[self.config["active_personality_id"]]
             self.apply_settings()
+            ASCIIColors.success("ok")
+            print(f"Mounted {self.personality.name}")
             return jsonify({
                 "status": True,
                 "personalities":self.config["personalities"],
                 "active_personality_id":self.config["active_personality_id"]                
                 })
         else:
+            ASCIIColors.error(f"nok : personality id out of bounds @ {id} >= {len(self.config['personalities'])}")
             return jsonify({"status": False, "error":"Invalid ID"})         
                     
 
@@ -819,9 +864,7 @@ class LoLLMsWebUI(LoLLMsAPPI):
         return "title renamed successfully"
     
     def load_discussion(self):
-        print("- Loading discussion")
         data = request.get_json()
-        print("    Recovered json data")
         if "id" in data:
             discussion_id = data["id"]
             self.current_discussion = Discussion(discussion_id, self.db)
@@ -831,7 +874,6 @@ class LoLLMsWebUI(LoLLMsAPPI):
                 self.current_discussion = Discussion(discussion_id, self.db)
             else:
                 self.current_discussion = self.db.create_discussion()
-        print(f"    Discussion id :{discussion_id}")
         messages = self.current_discussion.get_messages()
 
         
@@ -1182,7 +1224,7 @@ if __name__ == "__main__":
 
     # Configuration loading part
     config = LOLLMSConfig.autoload(lollms_paths)
-
+    
     # Override values in config with command-line arguments
     for arg_name, arg_value in vars(args).items():
         if arg_value is not None:

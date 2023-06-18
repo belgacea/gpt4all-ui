@@ -32,11 +32,6 @@
 
             <div class="flex gap-3 flex-1 items-center justify-end">
 
-
-                <!-- <div v-if="!isModelSelected" class="text-red-600 flex gap-3 items-center">
-                    <i data-feather="alert-triangle"></i>
-                    No model selected!
-                </div> -->
                 <div class="flex gap-3 items-center">
                     <div v-if="settingsChanged" class="flex gap-3 items-center">
                         Apply changes:
@@ -70,7 +65,7 @@
                 class="flex flex-col mb-2  rounded-lg bg-bg-light-tone dark:bg-bg-dark-tone hover:bg-bg-light-tone-panel hover:dark:bg-bg-dark-tone-panel duration-150 shadow-lg">
                 <div class="flex flex-row p-3">
                     <button @click.stop="sc_collapsed = !sc_collapsed"
-                        class="text-2xl hover:text-primary duration-75 p-2 -m-2 w-full text-left active:translate-y-1 flex flex-row items-center ">
+                        class="text-2xl hover:text-primary  p-2 -m-2 w-full text-left flex flex-row items-center ">
                         <i data-feather="chevron-right" class="mr-2  flex-shrink-0"></i>
 
                         <h3 class="text-lg font-semibold cursor-pointer select-none mr-2">
@@ -80,11 +75,12 @@
                         <div class=" text-base font-semibold cursor-pointer select-none items-center">
 
                             <div class="flex gap-2 items-center ">
-                                <svg class="flex-shrink-0" xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                <!-- <svg class="flex-shrink-0" xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                     viewBox="0 0 24 24">
                                     <path fill="currentColor"
                                         d="M17 17H7V7h10m4 4V9h-2V7a2 2 0 0 0-2-2h-2V3h-2v2h-2V3H9v2H7c-1.11 0-2 .89-2 2v2H3v2h2v2H3v2h2v2a2 2 0 0 0 2 2h2v2h2v-2h2v2h2v-2h2a2 2 0 0 0 2-2v-2h2v-2h-2v-2m-6 2h-2v-2h2m2-2H9v6h6V9Z" />
-                                </svg>
+                                </svg> -->
+                                <i data-feather="cpu" class="w-5 h-5 mx-1 flex-shrink-0"></i>
                                 <h3 class="font-bold font-large text-lg">
                                     <div>{{ ram_usage }} / {{ ram_total_space }}</div>
                                 </h3>
@@ -149,11 +145,16 @@
                 class="flex flex-col mb-2  rounded-lg bg-bg-light-tone dark:bg-bg-dark-tone hover:bg-bg-light-tone-panel hover:dark:bg-bg-dark-tone-panel duration-150 shadow-lg">
                 <div class="flex flex-row p-3">
                     <button @click.stop="bzc_collapsed = !bzc_collapsed"
-                        class="text-2xl hover:text-primary duration-75 p-2 -m-2 w-full text-left active:translate-y-1 flex flex-row items-center">
+                        class="text-2xl hover:text-primary p-2 -m-2 w-full text-left flex flex-row items-center">
                         <i data-feather="chevron-right" class="mr-2 flex-shrink-0"></i>
 
                         <h3 class="text-lg font-semibold cursor-pointer select-none mr-2">
                             Binding zoo</h3>
+                        <div v-if="!configFile.binding_name" class="text-base text-red-600 flex gap-3 items-center mr-2">
+                            <i data-feather="alert-triangle" class="flex-shrink-0"></i>
+                            No binding selected!
+                        </div>
+
                         <div v-if="configFile.binding_name" class="mr-2">|</div>
 
                         <div v-if="configFile.binding_name"
@@ -162,7 +163,8 @@
                             <div class="flex gap-1 items-center">
                                 <img :src="imgBinding" class="w-8 h-8 rounded-full object-fill text-blue-700">
                                 <h3 class="font-bold font-large text-lg line-clamp-1">
-                                    {{ configFile.binding_name }}
+                                    <!-- {{ configFile.binding_name }} -->
+                                    {{ binding_name }}
                                 </h3>
                             </div>
                         </div>
@@ -179,7 +181,8 @@
                             <TransitionGroup name="list">
                                 <BindingEntry ref="bindingZoo" v-for="(binding, index) in bindings"
                                     :key="'index-' + index + '-' + binding.folder" :binding="binding"
-                                    :on-selected="onSelectedBinding" :selected="binding.folder === configFile.binding_name">
+                                    :on-selected="onSelectedBinding" :on-reinstall="onReinstallBinding"
+                                    :selected="binding.folder === configFile.binding_name">
                                 </BindingEntry>
                             </TransitionGroup>
                         </div>
@@ -206,36 +209,82 @@
                 class="flex flex-col mb-2  rounded-lg bg-bg-light-tone dark:bg-bg-dark-tone hover:bg-bg-light-tone-panel hover:dark:bg-bg-dark-tone-panel duration-150 shadow-lg">
                 <div class="flex flex-row p-3">
                     <button @click.stop="mzc_collapsed = !mzc_collapsed"
-                        class="text-2xl hover:text-primary duration-75 p-2 -m-2 w-full text-left active:translate-y-1 flex items-center">
+                        class="text-2xl hover:text-primary  p-2 -m-2 w-full text-left flex items-center">
                         <i :data-feather="mzc_collapsed ? 'chevron-right' : 'chevron-down'" class="mr-2 flex-shrink-0"></i>
                         <h3 class="text-lg font-semibold cursor-pointer select-none mr-2">
-                        Models zoo</h3>
+                            Models zoo</h3>
                         <div class="flex flex-row items-center">
-                        <div v-if="!isModelSelected" class="text-base text-red-600 flex gap-3 items-center mr-2">
-                            <i data-feather="alert-triangle" class="flex-shrink-0"></i>
-                            No model selected!
-                        </div>
 
-                        <div v-if="configFile.model_name" class="mr-2">|</div>
-
-                        <div v-if="configFile.model_name" class="text-base font-semibold cursor-pointer select-none items-center">
-                            <div class="flex gap-1 items-center">
-                            <img :src="imgModel" class="w-8 h-8 rounded-lg object-fill">
-                            <h3 class="font-bold font-large text-lg line-clamp-1">
-                                {{ configFile.model_name }}
-                            </h3>
-                            <button @click.stop="showInputDialog" class="text-base hover:text-primary-dark ml-1 bg-bg-light-tone dark:bg-bg-dark-tone hover:bg-bg-dark-tone duration-200 rounded-lg px-2 py-1">
-                                +
-                            </button>
+                            <div v-if="!configFile.binding_name"
+                                class="text-base text-red-600 flex gap-3 items-center mr-2">
+                                <i data-feather="alert-triangle" class="flex-shrink-0"></i>
+                                Select binding first!
                             </div>
-                        </div>
+
+                            <div v-if="!isModelSelected && configFile.binding_name"
+                                class="text-base text-red-600 flex gap-3 items-center mr-2">
+                                <i data-feather="alert-triangle" class="flex-shrink-0"></i>
+                                No model selected!
+                            </div>
+
+                            <div v-if="configFile.model_name" class="mr-2">|</div>
+
+                            <div v-if="configFile.model_name"
+                                class="text-base font-semibold cursor-pointer select-none items-center">
+                                <div class="flex gap-1 items-center">
+                                    <img :src="imgModel" class="w-8 h-8 rounded-lg object-fill">
+                                    <h3 class="font-bold font-large text-lg line-clamp-1">
+                                        {{ configFile.model_name }}
+                                    </h3>
+                                </div>
+                            </div>
                         </div>
                     </button>
                 </div>
 
 
                 <div :class="{ 'hidden': mzc_collapsed }" class="flex flex-col mb-2 px-3 pb-0">
+                    <div class="mb-2" v-if="configFile.binding_name">
+                        <label for="model" class="block ml-2 mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                            Add models:
+                        </label>
+                        <div class="p-2 ">
 
+                            <form>
+                                <div class="mb-3">
+                                    <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                                        for="file_input">Select
+                                        files</label>
+
+
+                                    <input
+                                        class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400"
+                                        id="multiple_files" type="file" multiple>
+                                </div>
+
+                                <button type="submit"
+                                    class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Upload</button>
+                            </form>
+
+                        </div>
+                        <div class="p-2  ">
+
+                            <form>
+                                <div class="mb-3">
+                                    <label for="email"
+                                        class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Model
+                                        URL</label>
+                                    <input type="email" id="email"
+                                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                        placeholder="url" required>
+                                </div>
+
+                                <button type="submit"
+                                    class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Download</button>
+                            </form>
+
+                        </div>
+                    </div>
                     <div v-if="models.length > 0" class="mb-2">
                         <label for="model" class="block ml-2 mb-2 text-sm font-medium text-gray-900 dark:text-white">
                             Models: ({{ models.length }})
@@ -273,22 +322,55 @@
                 class="flex flex-col mb-2  rounded-lg bg-bg-light-tone dark:bg-bg-dark-tone hover:bg-bg-light-tone-panel hover:dark:bg-bg-dark-tone-panel duration-150 shadow-lg">
 
 
-                <div class="flex flex-row p-3">
+                <div class="flex flex-row p-3 items-center">
                     <button @click.stop="pzc_collapsed = !pzc_collapsed"
-                        class="text-2xl hover:text-primary duration-75 p-2 -m-2 w-full text-left active:translate-y-1 flex items-center">
-                        <i :data-feather="pzc_collapsed ? 'chevron-right' : 'chevron-down'" class="mr-2 flex-shrink-0"></i>
+                        class="text-2xl hover:text-primary  p-2 -m-2 text-left w-full  flex items-center">
+                        <i :data-feather="pzc_collapsed ? 'chevron-right' : 'chevron-down'" class="mr-2 flex-shrink-0 "></i>
                         <h3 class="text-lg font-semibold cursor-pointer select-none mr-2">
                             Personalities zoo</h3>
+
+
                         <div v-if="configFile.personalities" class="mr-2">|</div>
+                        <!-- LIST OF MOUNTED PERSONALITIES -->
+                        <div class="mr-2 font-bold font-large text-lg line-clamp-1">
+                            {{ active_pesonality }}
 
+                        </div>
+                        <div v-if="configFile.personalities" class="mr-2">|</div>
                         <div v-if="configFile.personalities"
-                            class=" text-base font-semibold cursor-pointer select-none items-center">
+                            class=" text-base font-semibold cursor-pointer select-none items-center flex flex-row">
+                            <!-- LIST -->
+                            <div class="flex -space-x-4 items-center " v-if="mountedPersArr.length > 0">
+                                <!-- ITEM -->
+                                <div class="relative  hover:-translate-y-2 duration-300 hover:z-10 shrink-0 "
+                                    v-for="(item, index) in mountedPersArr" :key="index + '-' + item.name"
+                                    ref="mountedPersonalities">
+                                    <div class="group items-center flex flex-row">
+                                        <button @click.stop="onPersonalitySelected(item)">
 
-                            <div class="flex gap-1 items-center">
-                                <img :src="imgPersonality" class="w-8 h-8 rounded-full object-fill text-red-700">
-                                <h3 class="font-bold font-large text-lg line-clamp-1">
-                                    {{ this.configFile.personality_folder }}
-                                </h3>
+                                            <img :src="bUrl + item.avatar" @error="personalityImgPlacehodler"
+                                                class="w-8 h-8 rounded-full object-fill text-red-700 border-2 active:scale-90 group-hover:border-secondary "
+                                                :class="configFile.active_personality_id == configFile.personalities.indexOf(item.full_path) ? 'border-secondary' : 'border-transparent z-0'"
+                                                :title="item.name">
+                                        </button>
+                                        <button @click.stop="onPersonalityMounted(item)">
+
+                                            <span
+                                                class="hidden group-hover:block top-0 left-7 absolute active:scale-90 bg-bg-light dark:bg-bg-dark rounded-full border-2  border-transparent"
+                                                title="Unmount personality">
+                                                <!-- UNMOUNT BUTTON -->
+                                                <svg aria-hidden="true" class="w-4 h-4 text-red-600 hover:text-red-500 "
+                                                    fill="currentColor" viewBox="0 0 20 20"
+                                                    xmlns="http://www.w3.org/2000/svg">
+                                                    <path fill-rule="evenodd"
+                                                        d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                                                        clip-rule="evenodd"></path>
+                                                </svg>
+
+                                            </span>
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
 
                         </div>
@@ -317,9 +399,10 @@
                         <select id="persCat" @change="update_setting('personality_category', $event.target.value, refresh)"
                             class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">
 
-                            <option v-for="item in persCatgArr" :selected="item === this.configFile.personality_category">{{
-                                item
-                            }}
+                            <option v-for="(item, index) in persCatgArr" :key="index"
+                                :selected="item == this.configFile.personality_category">{{
+                                    item
+                                }}
 
                             </option>
 
@@ -347,8 +430,9 @@
                             <TransitionGroup name="bounce">
                                 <personality-entry ref="personalitiesZoo" v-for="(pers, index) in personalitiesFiltered"
                                     :key="'index-' + index + '-' + pers.name" :personality="pers"
-                                    :selected="pers.folder === this.configFile.personality_folder && pers.category === this.configFile.personality_category && pers.language === this.configFile.personality_language"
-                                    :on-selected="onPersonalitySelected" />
+                                    :full_path="pers.full_path"
+                                    :selected="configFile.active_personality_id == configFile.personalities.findIndex(item => item === pers.full_path)"
+                                    :on-selected="onPersonalitySelected" :on-mounted="onPersonalityMounted" />
                             </TransitionGroup>
                         </div>
                     </div>
@@ -372,7 +456,7 @@
                 class="flex flex-col mb-2 p-3 rounded-lg bg-bg-light-tone dark:bg-bg-dark-tone hover:bg-bg-light-tone-panel hover:dark:bg-bg-dark-tone-panel duration-150 shadow-lg">
                 <div class="flex flex-row">
                     <button @click.stop="mc_collapsed = !mc_collapsed"
-                        class="text-2xl hover:text-primary duration-75 p-2 -m-2 w-full text-left active:translate-y-1 flex items-center">
+                        class="text-2xl hover:text-primary  p-2 -m-2 w-full text-left flex items-center">
                         <i :data-feather="mc_collapsed ? 'chevron-right' : 'chevron-down'" class="mr-2"></i>
                         <h3 class="text-lg font-semibold cursor-pointer select-none">
                             Model Configuration</h3>
@@ -532,14 +616,15 @@
                             </div>
                         </div>
                     </div>
-                    <!-- sdasdas -->
+
                 </div>
             </div>
         </div>
-
     </div>
 
-    <YesNoDialog ref="yesNoDialog" />
+
+    <YesNoDialog ref="yesNoDialog" class="z-20" />
+    <AddModelDialog ref="addmodeldialog" />
     <MessageBox ref="messageBox" />
     <Toast ref="toast" />
 </template>
@@ -588,16 +673,17 @@
         transform: scale(1);
     }
 }
+
 .bg-primary-light {
-  background-color: aqua
+    background-color: aqua
 }
 
 .hover:bg-primary-light:hover {
-  background-color: aquamarine
+    background-color: aquamarine
 }
 
 .font-bold {
-  font-weight: bold;
+    font-weight: bold;
 }
 </style>
 <script>
@@ -615,10 +701,13 @@ import BindingEntry from "../components/BindingEntry.vue";
 import socket from '@/services/websocket.js'
 import defaultModelImgPlaceholder from "../assets/default_model.png"
 import defaultPersonalityImgPlaceholder from "../assets/logo.svg"
+import AddModelDialog from "@/components/AddModelDialog.vue";
 
+const bUrl = import.meta.env.VITE_GPT4ALL_API_BASEURL
 axios.defaults.baseURL = import.meta.env.VITE_GPT4ALL_API_BASEURL
 export default {
     components: {
+        AddModelDialog,
         MessageBox,
         YesNoDialog,
         ModelEntry,
@@ -627,13 +716,14 @@ export default {
         Toast,
         PersonalityEntry,
         BindingEntry,
+
     },
     data() {
 
         return {
             // install custom model
-            showModelInputDialog: false,
-            modelPath: '',            
+            addModelDialogVisibility: false,
+            modelPath: '',
             // Zoo stuff
             models: [],
             personalities: [],
@@ -668,40 +758,34 @@ export default {
             isModelSelected: false,
             diskUsage: {},
             ramUsage: {},
-            isMounted: false // Needed to wait for $refs to be rendered
-
+            mountedPersArr: [],
+            isMounted: false, // Needed to wait for $refs to be rendered
+            bUrl: bUrl // for personality images
 
         }
     },
     created() {
 
     }, methods: {
-        showInputDialog() {
-            console.log("Input dialog shown")
-            this.showModelInputDialog = true;
-        },
-        closeInputDialog() {
-            this.showModelInputDialog = false;
-            this.modelPath = '';
-        },
-        validateModelPath() {
-            // Perform validation of the model path (e.g., checking if it is a local file or internet link)
-            // ...
+        showAddModelDialog() {
+            this.$refs.addmodeldialog.showDialog("").then(() => {
+                console.log(this.$refs.addmodeldialog.model_path);
 
-            // Trigger the `download_model` endpoint with the path as a POST
-            this.$axios.post('/download_model', { path: this.modelPath })
-            .then(response => {
-                // Handle the response
-                // ...
+                // Make a POST request to the "install model" endpoint
+                const path = this.$refs.addmodeldialog.model_path;
+
+                // Emit an event to the Socket.IO server
+                socket.emit("install_model", { path: path }, (response) => {
+                    // Handle the response from the server
+                    console.log("Model installation successful:", response);
+                });
+                console.log(this.$refs.addmodeldialog.model_path)
             })
-            .catch(error => {
-                // Handle the error
-                // ...
-            });
 
-            // Close the input dialog
-            this.closeInputDialog();
-        },        
+        },
+        closeAddModelDialog() {
+            this.addModelDialogVisibility = false;
+        },
         collapseAll(val) {
             this.bec_collapsed = val
             this.mzc_collapsed = val
@@ -718,6 +802,7 @@ export default {
                 .then(response => {
 
                     this.models = response.data;
+                    this.models.sort((a, b) => a.title.localeCompare(b.title))
                     this.fetchCustomModels()
                 })
                 .catch(error => {
@@ -749,26 +834,45 @@ export default {
                     console.log(error.message, 'fetchCustomModels');
                 });
         },
-        onPersonalitySelected(pers) {
-
+        async onPersonalitySelected(pers) {
+            console.log('on pers', pers)
             // eslint-disable-next-line no-unused-vars
             if (this.isLoading) {
                 this.$refs.toast.showToast("Loading... please wait", 4, false)
             }
-            if (pers.personality) {
-                if (this.configFile.personality_folder != pers.personality.folder) {
+            this.isLoading = true
+            console.log('ppa', pers)
+            if (pers) {
 
-
-                    this.settingsChanged = true
-                    const res = this.update_setting('personality_folder', pers.personality.folder, () => {
-                        this.$refs.toast.showToast("Selected personality:\n" + pers.personality.name, 4, true)
-                        this.configFile.personalities[configFile.active_personality_id] = pers.personality.language + "/" + pers.personality.category + "/" + pers.personality.name
-                    })
+                if (pers.selected) {
+                    this.$refs.toast.showToast("Personality already selected", 4, true)
+                    this.isLoading = false
+                    return
                 }
+
+
+                //this.settingsChanged = true
+
+                if (pers.isMounted) {
+
+                    const res = await this.select_personality(pers)
+
+                    if (res.status) {
+                        this.$refs.toast.showToast("Selected personality:\n" + pers.name, 4, true)
+
+                    }
+
+                } else {
+                    this.onPersonalityMounted(pers)
+
+                }
+
+
                 nextTick(() => {
                     feather.replace()
 
                 })
+                this.isLoading = false
             }
 
         },
@@ -923,6 +1027,29 @@ export default {
                 //console.log('lol',binding_object)
             }
         },
+        onReinstallBinding(binding_object) {
+            this.isLoading = true
+            axios.post('/reinstall_binding', {name: binding_object.binding.folder}).then((res) => {
+
+                if (res) {
+                    this.isLoading = false
+                    console.log('reinstall_binding', res)
+                    if(res.data.status){
+                        this.$refs.toast.showToast("Reinstalled binding successfully!", 4, true)
+                    }else{
+                        this.$refs.toast.showToast("Could not reinstall binding", 4, false)
+                    }
+                    return res.data;
+                }
+                this.isLoading = false
+            })
+            // eslint-disable-next-line no-unused-vars
+            
+                .catch(error => { 
+                    this.isLoading = false
+                    this.$refs.toast.showToast("Could not reinstall binding\n"+error.message, 4, false)
+                    return { 'status': false } });
+        },
         // messagebox ok stuff
         onMessageBoxOk() {
             console.log("OK button clicked");
@@ -931,15 +1058,24 @@ export default {
         refresh() {
 
 
-            // No need to refresh all lists because they never change during using application. 
-            // On settings change only config file chnages.
-            //
-            //this.api_get_req("list_bindings").then(response => { this.bindingsArr = response })
-            this.api_get_req("list_models").then(response => { this.modelsArr = response })
-            //this.api_get_req("list_personalities_languages").then(response => { this.persLangArr = response })
-            this.api_get_req("list_personalities_categories").then(response => { this.persCatgArr = response })
-            //this.api_get_req("list_languages").then(response => { this.langArr = response })
+
+            this.api_get_req("list_models").then(response => {
+                this.modelsArr = response
+                this.modelsArr.sort()
+            })
+
+            this.api_get_req("list_personalities_categories").then(response => {
+                this.persCatgArr = response
+                this.persCatgArr.sort()
+            })
+
             this.api_get_req("get_config").then(response => {
+                this.getPersonalitiesArr().then(() => {
+                    this.getMountedPersonalities()
+
+
+                })
+
                 console.log("Received config")
                 this.configFile = response
 
@@ -953,25 +1089,32 @@ export default {
                         model.selected = false;
                     }
                 });
+            }).then(() => {
+                this.api_get_req("get_current_personality_path_infos").then(response => {
+                    this.configFile.personality_language = response["personality_language"]
+                    this.configFile.personality_category = response["personality_category"]
+                    this.configFile.personality_folder = response["personality_name"]
+                    console.log("received infos")
+                });
             })
-            this.api_get_req("get_current_personality_path_infos").then(response => {
-                this.configFile.personality_language = response["personality_language"]
-                this.configFile.personality_category = response["personality_category"]
-                this.configFile.personality_folder = response["personality_name"]
-                console.log("received infos")
-            });
-            this.api_get_req("list_personalities").then(response => { 
-                this.persArr = response 
+
+
+
+            this.api_get_req("list_personalities").then(response => {
+                this.persArr = response
+                this.persArr.sort()
                 console.log(`Listed personalities:\n${response}`)
             })
+
             this.api_get_req("disk_usage").then(response => {
                 this.diskUsage = response
             })
+
             this.api_get_req("ram_usage").then(response => {
                 this.ramUsage = response
             })
-            //console.log('ram',this.ramUsage)
-            this.getPersonalitiesArr()
+
+
             this.fetchModels();
         },
         // Accordeon stuff
@@ -979,6 +1122,7 @@ export default {
             this.showAccordion = !this.showAccordion;
         },
         update_setting(setting_name_val, setting_value_val, next) {
+            this.isLoading = true
             const obj = {
                 setting_name: setting_name_val,
                 setting_value: setting_value_val
@@ -987,16 +1131,21 @@ export default {
             axios.post('/update_setting', obj).then((res) => {
 
                 if (res) {
-
+                    this.isLoading = false
+                    console.log('update_setting', res)
                     if (next !== undefined) {
 
                         next(res)
                     }
                     return res.data;
                 }
+                this.isLoading = false
             })
-                // eslint-disable-next-line no-unused-vars
-                .catch(error => { return { 'status': false } });
+            // eslint-disable-next-line no-unused-vars
+            
+                .catch(error => { 
+                    this.isLoading = false
+                    return { 'status': false } });
         },
         update_binding(value) {
 
@@ -1004,7 +1153,7 @@ export default {
             this.isLoading = true
 
             this.update_setting('binding_name', value, (res) => {
-                
+
 
                 this.$refs.toast.showToast("Binding changed.", 4, true)
                 this.settingsChanged = true
@@ -1033,23 +1182,16 @@ export default {
             })
         },
         applyConfiguration() {
-            // if (!this.configFile.model_name) {
 
-            //     this.$refs.toast.showToast("Configuration changed failed.\nPlease select model first", 4, false)
-            //     nextTick(() => {
-            //         feather.replace()
-            //     })
-            //     return
-            // }
             this.isLoading = true;
             axios.post('/apply_settings').then((res) => {
                 this.isLoading = false;
-
-                if (res.data.status === "succeeded") {
+                //console.log('apply-res',res)
+                if (res.data.status) {
 
                     this.$refs.toast.showToast("Configuration changed successfully.", 4, true)
                     this.settingsChanged = false
-                    this.save_configuration()
+                    //this.save_configuration()
                 } else {
 
                     this.$refs.toast.showToast("Configuration change failed.", 4, false)
@@ -1131,6 +1273,8 @@ export default {
             this.isLoading = true
             this.personalities = []
             const dictionary = await this.api_get_req("get_all_personalities")
+            const config = await this.api_get_req("get_config")
+            //console.log('asdas',config)
             // console.log("all_personalities")
             // console.log(dictionary)
             const langkeys = Object.keys(dictionary); // returns languages folder names
@@ -1143,10 +1287,17 @@ export default {
                     const catkey = catkeys[j];
                     const personalitiesArray = catdictionary[catkey];
                     const modPersArr = personalitiesArray.map((item) => {
+
+                        const isMounted = config.personalities.includes(langkey + '/' + catkey + '/' + item.folder)
+                        // if (isMounted) {
+                        //     console.log(item)
+                        // }
                         let newItem = {}
                         newItem = item
                         newItem.category = catkey // add new props to items
                         newItem.language = langkey // add new props to items
+                        newItem.full_path = langkey + '/' + catkey + '/' + item.folder // add new props to items
+                        newItem.isMounted = isMounted // add new props to items
                         return newItem
                     })
 
@@ -1159,27 +1310,242 @@ export default {
                 }
 
             }
-            // console.log(this.configFile)
-            // console.log(this.configFile.personality_category)
-            // console.log(this.configFile.personality_language)
-            // console.log("Personalities")
-            // console.log(this.personalities)
+
+            this.personalities.sort((a, b) => a.name.localeCompare(b.name))
             this.personalitiesFiltered = this.personalities.filter((item) => item.category === this.configFile.personality_category && item.language === this.configFile.personality_language)
-            //console.log(`Personalities filtered ${this.personalitiesFiltered}`)
+            this.personalitiesFiltered.sort()
+
             this.isLoading = false
 
         },
         computedFileSize(size) {
             return filesize(size)
         },
+        async mount_personality(pers) {
+            if (!pers) { return { 'status': false, 'error': 'no personality - mount_personality' } }
+
+            try {
+                const obj = {
+                    language: pers.language,
+                    category: pers.category,
+                    folder: pers.folder
+                }
+                const res = await axios.post('/mount_personality', obj);
+
+                if (res) {
+
+                    return res.data
+
+                }
+            } catch (error) {
+                console.log(error.message, 'mount_personality - settings')
+                return
+            }
+
+
+
+
+
+        },
+        async unmount_personality(pers) {
+            if (!pers) { return { 'status': false, 'error': 'no personality - unmount_personality' } }
+
+            const obj = {
+                language: pers.language,
+                category: pers.category,
+                folder: pers.folder
+            }
+
+
+            try {
+                const res = await axios.post('/unmount_personality', obj);
+
+                if (res) {
+
+                    return res.data
+
+                }
+            } catch (error) {
+                console.log(error.message, 'unmount_personality - settings')
+                return
+            }
+
+        },
+        async select_personality(pers) {
+            if (!pers) { return { 'status': false, 'error': 'no personality - select_personality' } }
+            console.log('select pers', pers)
+            const id = this.configFile.personalities.findIndex(item => item === pers.full_path)
+
+            const obj = {
+                id: id
+            }
+
+
+            try {
+                const res = await axios.post('/select_personality', obj);
+
+                if (res) {
+                    this.configFile = await this.api_get_req("get_config")
+                    let personality_path_infos = await this.api_get_req("get_current_personality_path_infos")
+                    this.configFile.personality_language = personality_path_infos["personality_language"]
+                    this.configFile.personality_category = personality_path_infos["personality_category"]
+                    this.configFile.personality_folder = personality_path_infos["personality_name"]
+                    return res.data
+
+                }
+            } catch (error) {
+                console.log(error.message, 'select_personality - settings')
+                return
+            }
+
+        },
+        async mountPersonality(pers) {
+            this.isLoading = true
+            console.log('mount pers', pers)
+            if (!pers) { return }
+
+            if (this.configFile.personalities.includes(pers.personality.full_path)) {
+                this.isLoading = false
+                this.$refs.toast.showToast("Personality already mounted", 4, false)
+
+                return
+            }
+
+            const res = await this.mount_personality(pers.personality)
+            console.log('mount_personality res', res)
+
+            if (res && res.status) {
+                this.configFile.personalities = res.personalities
+                this.$refs.toast.showToast("Personality mounted", 4, true)
+                pers.isMounted = true
+
+                const res2 = await this.select_personality(pers.personality)
+                if (res2.status) {
+                    this.$refs.toast.showToast("Selected personality:\n" + pers.personality.name, 4, true)
+
+                }
+                this.getMountedPersonalities()
+            } else {
+                pers.isMounted = false
+                this.$refs.toast.showToast("Could not mount personality\nError: " + res.error, 4, false)
+            }
+            this.isLoading = false
+
+        },
+        async unmountPersonality(pers) {
+            this.isLoading = true
+            if (!pers) { return }
+
+            const res = await this.unmount_personality(pers.personality || pers)
+
+
+            if (res.status) {
+                this.configFile.personalities = res.personalities
+                this.$refs.toast.showToast("Personality unmounted", 4, true)
+                const persId = this.personalities.findIndex(item => item.full_path == pers.full_path)
+                const persFilteredId = this.personalitiesFiltered.findIndex(item => item.full_path == pers.full_path)
+                const persIdZoo = this.$refs.personalitiesZoo.findIndex(item => item.full_path == pers.full_path)
+                console.log('ppp', this.personalities[persId])
+
+                this.personalities[persId].isMounted = false
+
+                if (persFilteredId > -1) {
+                    this.personalitiesFiltered[persFilteredId].isMounted = false
+
+                }
+
+                if (persIdZoo > -1) {
+                    this.$refs.personalitiesZoo[persIdZoo].isMounted = false
+
+                }
+
+
+                //pers.isMounted = false
+                this.getMountedPersonalities()
+                // Select some other personality
+                const lastPers = this.mountedPersArr[this.mountedPersArr.length - 1]
+
+                console.log(lastPers, this.mountedPersArr.length)
+                // const res2 = await this.select_personality(lastPers.personality)
+                const res2 = await this.select_personality(pers.personality)
+                if (res2.status) {
+                    this.$refs.toast.showToast("Selected personality:\n" + lastPers.name, 4, true)
+
+                }
+
+
+            } else {
+                this.$refs.toast.showToast("Could not unmount personality\nError: " + res.error, 4, false)
+            }
+
+            this.isLoading = false
+        },
+        getMountedPersonalities() {
+
+            let mountedPersArr = []
+            console.log(this.configFile.personalities.length)
+            // console.log('perrs listo',this.personalities)
+            for (let i = 0; i < this.configFile.personalities.length; i++) {
+                const full_path_item = this.configFile.personalities[i]
+                const index = this.personalities.findIndex(item => item.full_path == full_path_item)
+                console.log('index', index)
+                console.log("i:", i)
+                const pers = this.personalities[index]
+                if (pers) {
+                    mountedPersArr.push(pers)
+                }
+                else {
+                    mountedPersArr.push(this.personalities[this.personalities.findIndex(item => item.full_path == "english/generic/lollms")])
+                }
+            }
+            this.mountedPersArr = []
+            this.mountedPersArr = mountedPersArr
+            //this.mountedPersArr = mountedPersArr
+            console.log('getMountedPersonalities', mountedPersArr)
+            console.log('fig', this.configFile.personality_category)
+            nextTick(() => {
+                console.log('accc', this.$refs.mountedPersonalities)
+                //this.$store.state.mountedPersonalities = this.$refs.mountedPersonalities
+            })
+
+        },
+        onPersonalityMounted(persItem) {
+            this.isLoading = true
+            console.log('on sel ', persItem)
+
+            if (this.configFile.personalities.includes(persItem.full_path)) {
+                //this.$refs.toast.showToast("Personality already mounted", 4, false)
+                //return
+                //persItem.ismounted = false
+                if (this.configFile.personalities.length == 1) {
+                    this.$refs.toast.showToast("Can't unmount last personality", 4, false)
+
+                } else {
+                    this.unmountPersonality(persItem)
+
+                }
+            } else {
+                //persItem.ismounted = true
+                this.mountPersonality(persItem)
+
+            }
+
+            this.isLoading = false
+        },
+        personalityImgPlacehodler(event) {
+            event.target.src = defaultPersonalityImgPlaceholder
+        },
 
 
     }, async mounted() {
+
+        //this.$refs.mountedPersonalities
         this.isLoading = true
         nextTick(() => {
             feather.replace()
 
         })
+
         this.configFile = await this.api_get_req("get_config")
         let personality_path_infos = await this.api_get_req("get_current_personality_path_infos")
         this.configFile.personality_language = personality_path_infos["personality_language"]
@@ -1192,19 +1558,37 @@ export default {
         }
 
         this.fetchModels();
+
         this.bindingsArr = await this.api_get_req("list_bindings")
         this.modelsArr = await this.api_get_req("list_models")
         this.persLangArr = await this.api_get_req("list_personalities_languages")
         this.persCatgArr = await this.api_get_req("list_personalities_categories")
         this.persArr = await this.api_get_req("list_personalities")
         this.langArr = await this.api_get_req("list_languages")
+
+
+        this.bindingsArr.sort((a, b) => a.name.localeCompare(b.name))
+        this.modelsArr.sort()
+        this.persLangArr.sort()
+        this.persCatgArr.sort()
+        this.persArr.sort()
+        this.langArr.sort()
+
+
         await this.getPersonalitiesArr()
+
+
         this.bindings = await this.api_get_req("list_bindings")
+        this.bindings.sort((a, b) => a.name.localeCompare(b.name))
         this.isLoading = false
         this.diskUsage = await this.api_get_req("disk_usage")
         this.ramUsage = await this.api_get_req("ram_usage")
-        console.log('ran', this.ramUsage)
+        this.getMountedPersonalities()
         this.isMounted = true
+
+
+    },
+    activated() {
 
     },
     computed: {
@@ -1258,17 +1642,35 @@ export default {
                 return defaultModelImgPlaceholder
             }
         },
-        imgPersonality() {
+        binding_name() {
             if (!this.isMounted) {
                 return
             }
-            try {
-                return this.$refs.personalitiesZoo[this.$refs.personalitiesZoo.findIndex(item => item.personality.folder == this.configFile.personality_folder)].$refs.imgElement.src
+            const index = this.bindingsArr.findIndex(item => item.folder === this.configFile.binding_name)
+            if (index > -1) {
+                return this.bindingsArr[index].name
+
+            } else {
+                return
             }
-            catch (error) {
-                return defaultPersonalityImgPlaceholder
-            }
+
         },
+        active_pesonality() {
+            if (!this.isMounted) {
+                return
+            }
+            const index = this.personalities.findIndex(item => item.full_path === this.configFile.personalities[this.configFile.active_personality_id])
+            if (index > -1) {
+                return this.personalities[index].name
+            } else {
+                return
+
+            }
+
+
+
+        }
+
 
     },
     watch: {
@@ -1331,7 +1733,9 @@ export default {
 
             })
         },
-        settingsChanged() {
+        settingsChanged(val) {
+
+            this.$store.state.settingsChanged = val
             nextTick(() => {
                 feather.replace()
 
@@ -1344,7 +1748,23 @@ export default {
             })
         },
 
-    }
+    },
+    async beforeRouteLeave(to) {
+        // console.log('did settings?',this.settingsChanged)
+        await this.$router.isReady()
+        if (this.settingsChanged) {
+            const res = await this.$refs.yesNoDialog.askQuestion("You forgot to apply changes?\nYou need to apply changes before you leave, or else.", 'Apply configuration', 'Cancel')
+            if (res) {
+                this.applyConfiguration()
+
+            }
+
+            return false
+
+        }
+
+
+    },
 }
 </script>
 
